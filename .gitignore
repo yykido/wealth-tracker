@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.idea/
+.DS_Store
+.env
+.env.*
+!.env.example
+*.log
+*.tsbuildinfo
+.sites-runtime/
+private-data/
+backups/
+wealth-tracker-backup-*.json
+test-results/
+playwright-report/

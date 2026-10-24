@@ -2,7 +2,7 @@
 
 Last updated: 2026-10-24
 
-Accepted decisions describe agreed intent, not completed implementation. This log records the current direction and meaningful superseded choices rather than the full conversation.
+Accepted decisions describe the current design; the README records implementation and verification status. This log records the current direction and meaningful superseded choices rather than the full conversation.
 
 ## D001: Tracking and hypothetical projections
 
@@ -12,7 +12,7 @@ Track spending and asset values without executing trades. Keep actual balances, 
 
 ## D002: React, TypeScript, and Vite
 
-Status: accepted; exact versions pending scaffolding.
+Status: accepted; versions recorded in package.json and package-lock.json.
 
 Use React for the interface, TypeScript for domain types and calculations, and Vite for local development and static builds. Use Recharts for charts and Dexie for IndexedDB access. CSV parsing libraries can wait until CSV import is implemented.
 
@@ -42,7 +42,7 @@ Updating personal data is a browser operation, not a Git commit or deployment.
 
 ## D006: Develop locally and host the personal app on Sites
 
-Status: accepted; deployment not yet configured.
+Status: accepted; deployment is configured through .openai/hosting.json.
 
 Develop and verify locally, version the source on GitHub, and deploy static application files through Sites. Start the Site with a private audience. The deployed personal tracker stores records in each user's browser and does not require the developer's Mac to remain running.
 
@@ -84,7 +84,13 @@ Consequence: invalid or failed restores preserve existing records. Merge is outs
 
 ## Open decisions
 
-- Interface styling and exact compatible dependency versions.
+- Future changes to dependency versions and interface details.
 - CSV formats and transaction-level tracking, after the first manual release.
 - Individual investment holdings, if account-level snapshots prove insufficient.
 - Whether future shared family use warrants synchronization and authentication.
+
+## D011: Trade Republic-inspired interface
+
+Status: accepted.
+
+The user requested a visual style similar to Trade Republic. Use clean white surfaces, bold black typography, restrained green accents, and minimal charts. Keep independent Wealth Tracker branding and an explicit non-affiliation statement.

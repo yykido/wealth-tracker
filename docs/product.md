@@ -2,7 +2,7 @@
 
 Last updated: 2026-10-24
 
-Status: agreed first-version direction; not implemented.
+Status: first version implemented; deployment and verification results are recorded in the README and release history.
 
 ## Purpose
 
@@ -71,12 +71,12 @@ If browser data is lost, restore into the same app. If the Site is unavailable, 
 
 ## Storage boundaries
 
-| Location | Contents |
-| --- | --- |
-| Browser IndexedDB | Personal expenses, categories, accounts, snapshots, cash flows, scenarios, and settings |
-| GitHub | Code, documentation, lockfile, and fictional examples |
-| Sites | Application files, without personal records |
-| User's backup file | Exported financial records and settings, stored privately by the user |
+| Location           | Contents                                                                                |
+| ------------------ | --------------------------------------------------------------------------------------- |
+| Browser IndexedDB  | Personal expenses, categories, accounts, snapshots, cash flows, scenarios, and settings |
+| GitHub             | Code, documentation, lockfile, and fictional examples                                   |
+| Sites              | Application files, without personal records                                             |
+| User's backup file | Exported financial records and settings, stored privately by the user                   |
 
 Different browsers, profiles, devices, and website origins have separate data. Switching from a local development URL to Sites requires export and restore. Private browsing is unsuitable for durable records. Browser storage and plain JSON are not encrypted vaults.
 

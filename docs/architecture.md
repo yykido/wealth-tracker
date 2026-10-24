@@ -2,22 +2,22 @@
 
 Last updated: 2026-10-24
 
-Status: agreed browser-only architecture; no application code exists yet.
+Status: browser-only first version implemented.
 
 ## Stack
 
-| Responsibility | Technology |
-| --- | --- |
-| Language | TypeScript |
-| Interface | React |
-| Development and build | Vite |
-| Browser database | IndexedDB through Dexie |
-| Charts | Recharts |
-| Source control | Git and GitHub |
-| Hosting | Sites, serving the static build |
-| Recovery | Local JSON export and restore |
+| Responsibility        | Technology                      |
+| --------------------- | ------------------------------- |
+| Language              | TypeScript                      |
+| Interface             | React                           |
+| Development and build | Vite                            |
+| Browser database      | IndexedDB through Dexie         |
+| Charts                | Recharts                        |
+| Source control        | Git and GitHub                  |
+| Hosting               | Sites, serving the static build |
+| Recovery              | Local JSON export and restore   |
 
-Select compatible stable dependency versions during scaffolding and commit the lockfile. Plain CSS is sufficient initially. Papa Parse is a candidate for later CSV import, not a first-version dependency requirement.
+Compatible dependency versions are recorded in package.json and package-lock.json. Plain CSS is sufficient initially. Papa Parse is a candidate for later CSV import, not a first-version dependency requirement.
 
 ## Data flow
 
@@ -35,7 +35,7 @@ The browser performs validation, calculations, persistence, and backup processin
 
 GitHub and Sites receive application source or build files, not personal financial records. Normal asset or expense updates never trigger source-control operations or deployments.
 
-## Suggested structure
+## Source structure
 
 ```text
 src/
@@ -50,21 +50,21 @@ src/
   demo/             Fictional examples only
 ```
 
-Keep domain logic independent of React and database access. Put persistence behind a small storage interface so a future backend can be added without rewriting calculations or views.
+Domain logic is independent of React and database access. Put persistence behind a small storage interface so a future backend can be added without rewriting calculations or views.
 
 ## Initial data model
 
 Use stable IDs, date-only financial dates, and timestamps for creation and modification. Use EUR in the first version.
 
-| Entity | Key fields |
-| --- | --- |
-| Account | ID, display name, type, currency |
-| Category | ID, display name |
-| Monthly expense | ID, month (`YYYY-MM`), category ID, positive amount in cents, optional note |
-| Asset snapshot | ID, account ID, date, cash value in cents, investment market value in cents |
-| Cash flow | ID, account ID, date, positive amount in cents, kind: contribution, withdrawal, transfer in, or transfer out; optional transfer pair ID |
-| Projection scenario | ID, name, initial amount, monthly contribution, annual return assumption, duration, optional inflation assumption |
-| Settings | Display preferences and supported application settings |
+| Entity              | Key fields                                                                                                                              |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Account             | ID, display name, type, currency                                                                                                        |
+| Category            | ID, display name                                                                                                                        |
+| Monthly expense     | ID, month (`YYYY-MM`), category ID, positive amount in cents, optional note                                                             |
+| Asset snapshot      | ID, account ID, date, cash value in cents, investment market value in cents                                                             |
+| Cash flow           | ID, account ID, date, positive amount in cents, kind: contribution, withdrawal, transfer in, or transfer out; optional transfer pair ID |
+| Projection scenario | ID, name, initial amount, monthly contribution, annual return assumption, duration, optional inflation assumption                       |
+| Settings            | Display preferences and supported application settings                                                                                  |
 
 Enforce unique month/category expense totals and account/date snapshots. Validate references and handle deletion of referenced accounts or categories explicitly; do not leave orphan records.
 
@@ -137,9 +137,9 @@ Build static assets into `dist/` and deploy using the Sites workflow. Start with
 
 The deployed personal tracker operates in each visitor's browser. It is not limited to a fictional demo, but the application bundle must contain only fictional examples. The developer's Mac can be asleep or off after deployment.
 
-During scaffolding, add ignore rules for dependencies, build output, local secrets, IDE state, and private data. Keep backups outside the checkout; ignore rules do not remove files already tracked by Git. Use small feature commits and verify the intended files before pushing.
+The repository includes ignore rules for dependencies, build output, local secrets, IDE state, and private data. Keep backups outside the checkout; ignore rules do not remove files already tracked by Git. Use small feature commits and verify the intended files before pushing.
 
-## Planned verification
+## Verification
 
 - Independently check projections, including zero return, negative return, and contribution timing.
 - Check monthly expense uniqueness, snapshot totals, and transfer treatment.
@@ -148,3 +148,11 @@ During scaffolding, add ignore rules for dependencies, build output, local secre
 - Verify restore into a fresh browser database and recovery after a change of origin.
 - Verify imports, exports, edits, and calculations send no personal data over the network.
 - Check accessible controls, mobile layouts, and a production build before deployment.
+
+## Interface
+
+Use a Trade Republic-inspired visual direction: white surfaces, black typography, generous spacing, rounded action buttons, and restrained green chart accents. Keep Wealth Tracker branding and explicitly state that this is an independent project. Start empty; fictional examples require an explicit action.
+
+## Storage implementation
+
+Dexie manages separate stores for accounts, categories, expenses, snapshots, cash flows, scenarios, and settings. Whole-dataset writes and restore replacements occur in a transaction. A stale-data check rejects edits when another tab has changed the stored dataset; reload before retrying. Tests use a simulated IndexedDB implementation, and visual browser verification is separate.
