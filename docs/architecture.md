@@ -17,7 +17,7 @@ Status: browser-only first version implemented.
 | Hosting               | Sites, serving the static build |
 | Recovery              | Local JSON export and restore   |
 
-Compatible dependency versions are recorded in package.json and package-lock.json. Plain CSS is sufficient initially. Papa Parse is a candidate for later CSV import, not a first-version dependency requirement.
+Compatible dependency versions are recorded in package.json and package-lock.json. Plain CSS is sufficient initially. Tesseract.js provides on-device OCR. English and German model packages are self-hosted as build assets. Papa Parse remains a candidate for later CSV import.
 
 ## Data flow
 
@@ -94,21 +94,22 @@ Bundle dependencies and avoid analytics or external requests containing financia
 
 ## Backup format
 
-Use a JSON envelope containing `app`, `schemaVersion`, `exportedAt`, and `data`. Export accounts, categories, monthly expenses, snapshots, cash flows, scenarios, and supported settings. Do not include runtime objects or secrets.
+Use a JSON envelope containing `app`, `schemaVersion`, `exportedAt`, and `data`. Export accounts, categories, monthly expenses, payments, snapshots, cash flows, scenarios, and supported settings. Do not include runtime objects or secrets.
 
-The app identifier is `wealth-tracker`. The initial backup schema version is 1. Store monetary records in cents, document rate units, and keep database and backup schema versioning explicit and independent. Future formats need explicit migrations; reject unsupported versions rather than guessing.
+The app identifier is `wealth-tracker`. The current backup schema version is 2, adding the payments collection. Version 1 backups migrate with an empty payments array; all existing collections remain required. Store monetary records in cents, document rate units, and keep database and backup schema versioning explicit and independent. Future formats need explicit migrations; reject unsupported versions rather than guessing.
 
 Example envelope with an empty dataset:
 
 ```json
 {
   "app": "wealth-tracker",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "exportedAt": "2026-10-24T12:00:00.000Z",
   "data": {
     "accounts": [],
     "categories": [],
     "monthlyExpenses": [],
+    "payments": [],
     "assetSnapshots": [],
     "cashFlows": [],
     "scenarios": [],
@@ -156,3 +157,17 @@ Use a Trade Republic-inspired visual direction: white surfaces, black typography
 ## Storage implementation
 
 Dexie manages separate stores for accounts, categories, expenses, snapshots, cash flows, scenarios, and settings. Whole-dataset writes and restore replacements occur in a transaction. A stale-data check rejects edits when another tab has changed the stored dataset; reload before retrying. Tests use a simulated IndexedDB implementation, and visual browser verification is separate.
+
+## Bulk payment import
+
+Database version 2 adds a `payments` store while retaining version 1 stores and records. Backup version 2 includes payments; restoring legacy backups adds an empty payment collection before normal validation. No screenshot or OCR source text is persisted.
+
+`scripts/prepare-ocr.mjs` copies the Tesseract worker, LSTM WASM variants, licenses, and English/German language data from locked npm dependencies into ignored `public/ocr/`. Predev and prebuild hooks prepare these assets. The client explicitly configures worker, core, and language paths to the current origin, avoiding CDN defaults. Models are fetched only when scanning, not on every page visit.
+
+The import flow bounds file sizes, image pixels, extracted-text length, and batch size. It normalizes common date and currency formats conservatively, proposes categories using local merchant rules, and leaves questionable directions or rows unselected. Recognition is fallible; an editable review precedes persistence. Raw text is available transiently to correct parser mistakes.
+
+Duplicate identity uses date, normalized description, positive integer amount, and direction. It is a warning rather than a hard uniqueness constraint because legitimate repeated payments exist. Overrides require explicit acknowledgment.
+
+Spending totals are derived by category/month: use an existing manual total, otherwise sum outgoing payments. Incoming payments are excluded. The review requires an explicit choice before removing any overlapping manual total. Committing applies category creation, optional manual-total removal, and all selected payments through the existing atomic dataset write and stale-tab check.
+
+Browser tests must exercise the real worker and WASM on a fictional screenshot, not just mock recognized text. Network checks must confirm that no image or text is sent to an external service. Additional tests cover manual-total conflicts, duplicates, payment edits, schema migration, and backup recovery.

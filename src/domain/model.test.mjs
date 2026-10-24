@@ -108,7 +108,7 @@ describe("backup validation", () => {
   });
   it("rejects broken versions, dates, references, duplicates, and invalid money", () => {
     const raw = () => makeBackup(demoData());
-    const version = { ...raw(), schemaVersion: 2 };
+    const version = { ...raw(), schemaVersion: 3 };
     expect(() => parseBackup(JSON.stringify(version))).toThrow("version");
     const missing = raw();
     missing.data.assetSnapshots[0].accountId = "missing";

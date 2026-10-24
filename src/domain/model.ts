@@ -12,6 +12,15 @@ export type Expense = {
   amount: number;
   note: string;
 };
+export type Payment = {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  direction: "debit" | "credit";
+  categoryId: string;
+  importBatchId?: string;
+};
 export type Snapshot = {
   id: string;
   accountId: string;
@@ -41,6 +50,7 @@ export type Data = {
   accounts: Account[];
   categories: Category[];
   monthlyExpenses: Expense[];
+  payments: Payment[];
   assetSnapshots: Snapshot[];
   cashFlows: CashFlow[];
   scenarios: Scenario[];
@@ -50,6 +60,7 @@ export const emptyData = (): Data => ({
   accounts: [],
   categories: [],
   monthlyExpenses: [],
+  payments: [],
   assetSnapshots: [],
   cashFlows: [],
   scenarios: [],

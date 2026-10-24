@@ -24,9 +24,21 @@ Help an individual or household record spending, track asset values, and explore
 2. Enter the total spent in that category, with an optional note.
 3. Save, edit, or delete the entry and see updated monthly totals.
 
-Use one total per month and category. Editing an existing total replaces it rather than adding a duplicate. Individual purchase tracking and CSV import are later enhancements; do not combine detailed purchases with monthly totals in a way that counts the same spending twice.
+Use one total per month and category. Editing an existing total replaces it rather than adding a duplicate. Individual payments can also be imported through the screenshot workflow below. A manual total takes priority over payment sums for that category/month, rather than being added to them. CSV import is a later enhancement.
 
 Categories are user-defined. Support euro amounts and German decimal formatting. Expense totals are independent of recorded account balances and do not automatically reduce asset snapshots.
+
+### Bulk screenshot payment import
+
+- Select a PNG, JPEG, or WebP screenshot/photo of a payment list (up to 10 MB and 24 megapixels), or paste a payment list as text.
+- Run OCR locally using English and/or German models served with the app; do not send the image or extracted text to external services.
+- Support dated payment rows and date headings with signed euro amounts. Expose a year setting for dates without a year. Other layouts may require manual correction.
+- Review an editable table of dates, descriptions, positive amounts, outgoing/incoming direction, and suggested categories. Allow deselecting entries and adding missed rows.
+- Do not automatically select incoming, unsigned, ambiguous multi-amount, or transfer-like entries. Do not include incoming payments in spending totals.
+- Flag matching date/description/amount/direction combinations in existing records or the selected batch. Duplicates require an explicit exception or deselection.
+- Require a choice for existing manual totals: keep the total and exclude payments from its calculation, or remove the total and use all recorded outgoing payments for the group. Show that partial imports may understate a full month.
+- Persist the selected payments and category changes in one transaction only after confirmation. Retain neither original images nor raw OCR text.
+- Allow editing and deleting recorded payments. Calculated totals update automatically; manual totals remain authoritative until removed.
 
 ### Asset snapshots
 
@@ -71,12 +83,12 @@ If browser data is lost, restore into the same app. If the Site is unavailable, 
 
 ## Storage boundaries
 
-| Location           | Contents                                                                                |
-| ------------------ | --------------------------------------------------------------------------------------- |
-| Browser IndexedDB  | Personal expenses, categories, accounts, snapshots, cash flows, scenarios, and settings |
-| GitHub             | Code, documentation, lockfile, and fictional examples                                   |
-| Sites              | Application files, without personal records                                             |
-| User's backup file | Exported financial records and settings, stored privately by the user                   |
+| Location           | Contents                                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------------------- |
+| Browser IndexedDB  | Personal expenses, categories, accounts, snapshots, cash flows, payments, scenarios, and settings |
+| GitHub             | Code, documentation, lockfile, and fictional examples                                             |
+| Sites              | Application files, without personal records                                                       |
+| User's backup file | Exported financial records and settings, stored privately by the user                             |
 
 Different browsers, profiles, devices, and website origins have separate data. Switching from a local development URL to Sites requires export and restore. Private browsing is unsuitable for durable records. Browser storage and plain JSON are not encrypted vaults.
 
@@ -85,7 +97,7 @@ Different browsers, profiles, devices, and website origins have separate data. S
 - Spring Boot, PostgreSQL, backend hosting, tunnels, and always-on services.
 - Shared household accounts and automatic cross-device synchronization.
 - Brokerage APIs, trade execution, and live price feeds.
-- CSV and Excel imports, PDF extraction, and individual purchase tracking.
+- CSV and Excel imports and PDF extraction.
 - Multiple currencies, tax calculations, investment recommendations, and probabilistic forecasts.
 
 ## Acceptance criteria
@@ -114,3 +126,11 @@ Different browsers, profiles, devices, and website origins have separate data. S
 - Which CSV layouts would save the most effort?
 - Are individual ETF holdings or purchase-level expenses needed?
 - Is shared family access worth adding synchronization and authentication later?
+
+## Screenshot import acceptance
+
+- One clear fictional screenshot yields multiple review rows and a single confirmed batch save.
+- An invalid or canceled review leaves current records unchanged.
+- Existing manual totals are never silently added to imported payment sums.
+- Payments survive reloads and JSON backup recovery; legacy records survive database upgrades.
+- Image bytes and recognized text never leave the device or enter persistent storage.

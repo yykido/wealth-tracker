@@ -7,7 +7,7 @@ import {
 } from "./model";
 export type Backup = {
   app: "wealth-tracker";
-  schemaVersion: 1;
+  schemaVersion: 2;
   exportedAt: string;
   data: Data;
 };
@@ -77,6 +77,18 @@ export function validateData(value: unknown): Data {
     unique.add(key);
   }
   unique.clear();
+  for (const p of data.payments) {
+    assert(
+      validDate(p.date) &&
+        text(p.description, 250) &&
+        money(p.amount) &&
+        p.amount > 0 &&
+        ["debit", "credit"].includes(p.direction) &&
+        categories.has(p.categoryId) &&
+        (p.importBatchId === undefined || text(p.importBatchId, 100)),
+      "Invalid payment or missing category.",
+    );
+  }
   for (const s of data.assetSnapshots) {
     assert(
       validDate(s.date) &&
@@ -160,6 +172,25 @@ export function validateData(value: unknown): Data {
         note,
       }),
     ),
+    payments: data.payments.map(
+      ({
+        id,
+        date,
+        description,
+        amount,
+        direction,
+        categoryId,
+        importBatchId,
+      }) => ({
+        id,
+        date,
+        description,
+        amount,
+        direction,
+        categoryId,
+        ...(importBatchId ? { importBatchId } : {}),
+      }),
+    ),
     assetSnapshots: data.assetSnapshots.map(
       ({ id, accountId, date, cash, investments }) => ({
         id,
@@ -198,7 +229,7 @@ export const makeBackup = (
   exportedAt = new Date().toISOString(),
 ): Backup => ({
   app: "wealth-tracker",
-  schemaVersion: 1,
+  schemaVersion: 2,
   exportedAt,
   data: validateData(data),
 });
@@ -216,7 +247,7 @@ export function parseBackup(raw: string): Backup {
     "This is not a Wealth Tracker backup.",
   );
   assert(
-    b.schemaVersion === 1,
+    b.schemaVersion === 1 || b.schemaVersion === 2,
     "Unsupported backup version. Your current records have not been changed.",
   );
   assert(
@@ -224,10 +255,18 @@ export function parseBackup(raw: string): Backup {
       Number.isFinite(Date.parse(b.exportedAt)),
     "Invalid backup export date.",
   );
+  assert(
+    !(b.schemaVersion === 1 && object(b.data) && "payments" in b.data),
+    "Legacy version 1 backups cannot contain payment records. Check the backup version.",
+  );
   return {
     app: "wealth-tracker",
-    schemaVersion: 1,
+    schemaVersion: 2,
     exportedAt: b.exportedAt,
-    data: validateData(b.data),
+    data: validateData(
+      b.schemaVersion === 1 && object(b.data)
+        ? { ...b.data, payments: [] }
+        : b.data,
+    ),
   };
 }

@@ -10,16 +10,21 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "node --import tsx --test src/domain/model.test.mjs src/storage/database.test.mjs",
+    "test": "node --import tsx --test src/domain/*.test.mjs src/storage/*.test.mjs",
     "test:browser": "playwright test",
-    "format": "prettier --write src e2e *.json *.mjs *.ts README.md docs .github"
+    "format": "prettier --write src e2e scripts *.json *.mjs *.ts README.md docs .github",
+    "predev": "node scripts/prepare-ocr.mjs",
+    "prebuild": "node scripts/prepare-ocr.mjs"
   },
   "dependencies": {
+    "@tesseract.js-data/deu": "^1.0.0",
+    "@tesseract.js-data/eng": "^1.0.0",
     "dexie": "^4.0.11",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "recharts": "^3.0.0"
+    "recharts": "^3.0.0",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

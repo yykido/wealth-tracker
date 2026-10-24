@@ -68,3 +68,33 @@ describe("persistent storage and restore", () => {
     expect(await db.read()).toEqual(emptyData());
   });
 });
+
+it("upgrades a version 1 database without changing existing monthly totals", async () => {
+  const { default: Dexie } = await import("dexie");
+  const name = `legacy-${crypto.randomUUID()}`;
+  const legacy = new Dexie(name);
+  legacy.version(1).stores({
+    accounts: "id",
+    categories: "id",
+    monthlyExpenses: "id, &[month+categoryId]",
+    assetSnapshots: "id, &[accountId+date]",
+    cashFlows: "id, pairId",
+    scenarios: "id",
+    settings: "id",
+  });
+  await legacy.table("categories").put({ id: "cat", name: "Groceries" });
+  await legacy.table("monthlyExpenses").put({
+    id: "total",
+    month: "2026-10",
+    categoryId: "cat",
+    amount: 40000,
+    note: "Keep me",
+  });
+  legacy.close();
+  const upgraded = new TrackerDB(name);
+  opened.push(upgraded);
+  const result = await upgraded.read();
+  assert.equal(result.monthlyExpenses[0].amount, 40000);
+  assert.equal(result.monthlyExpenses[0].note, "Keep me");
+  assert.deepEqual(result.payments, []);
+});

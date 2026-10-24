@@ -28,6 +28,7 @@ import {
   AlertTriangle,
   Database,
   Sparkles,
+  ScanLine,
 } from "lucide-react";
 import {
   Area,
@@ -58,11 +59,14 @@ import {
 import { makeBackup, parseBackup, type Backup } from "./domain/backup";
 import { db } from "./storage/database";
 import { demoData } from "./demo/data";
+import PaymentImport from "./features/import/PaymentImport";
+import PaymentsPanel from "./features/import/PaymentsPanel";
+import { monthlySpending } from "./domain/payments";
 
 type Page =
   "Overview" | "Expenses" | "Assets" | "Projections" | "Data & backup";
 type Modal = {
-  kind: "expense" | "snapshot" | "account" | "flow";
+  kind: "expense" | "snapshot" | "account" | "flow" | "payment";
   id?: string;
   accountId?: string;
 } | null;
@@ -280,6 +284,7 @@ export default function App() {
   const [modal, setModal] = useState<Modal>(null),
     [confirm, setConfirm] = useState<Confirmation>(null),
     [backup, setBackup] = useState<Backup | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const [month, setMonth] = useState(today().slice(0, 7));
   const [range, setRange] = useState<"6M" | "1Y" | "ALL">("ALL");
   const [expenseCategory, setExpenseCategory] = useState("new");
@@ -347,7 +352,7 @@ export default function App() {
     total = snapshots.reduce((sum, s) => sum + s.cash + s.investments, 0);
   const cash = snapshots.reduce((sum, s) => sum + s.cash, 0),
     investments = total - cash;
-  const expenses = data.monthlyExpenses.filter((e) => e.month === month),
+  const expenses = monthlySpending(data, month),
     expenseTotal = expenses.reduce((sum, e) => sum + e.amount, 0);
   const history = assetHistory(data);
   const filteredHistory = history.filter(
@@ -490,6 +495,21 @@ export default function App() {
           .concat(record);
         setMonth(m);
       }
+      if (modal.kind === "payment") {
+        const existing = next.payments.find((p) => p.id === modal.id);
+        if (!existing) throw new Error("Payment no longer exists.");
+        const record = {
+          ...existing,
+          date: fvalue(f, "date"),
+          description: fvalue(f, "description"),
+          amount: moneyInput(fvalue(f, "amount")),
+          direction: fvalue(f, "direction") as "debit" | "credit",
+          categoryId: fvalue(f, "category"),
+        };
+        next.payments = next.payments.map((p) =>
+          p.id === record.id ? record : p,
+        );
+      }
       if (modal.kind === "account") {
         const id = modal.id ?? uid();
         const account: Account = {
@@ -575,6 +595,7 @@ export default function App() {
   const editingExpense = data.monthlyExpenses.find((x) => x.id === modal?.id);
   const editingSnapshot = data.assetSnapshots.find((x) => x.id === modal?.id);
   const editingAccount = data.accounts.find((x) => x.id === modal?.id);
+  const editingPayment = data.payments.find((p) => p.id === modal?.id);
   const submitButtons = (
     <div className="modal-actions">
       <button
@@ -694,6 +715,16 @@ export default function App() {
               >
                 <Plus size={17} />
                 Update balances
+              </button>
+            )}
+            {page === "Expenses" && (
+              <button
+                className="btn secondary"
+                disabled={busy || !storageReady}
+                onClick={() => setImportOpen(true)}
+              >
+                <ScanLine size={17} />
+                Import screenshot
               </button>
             )}
             {page === "Expenses" && (
@@ -972,19 +1003,21 @@ export default function App() {
                     <ArrowRight size={15} />
                   </button>
                 </div>
-                {!data.accounts.length && !data.monthlyExpenses.length && (
-                  <div className="demo-invite">
-                    <span>Want to look around first?</span>
-                    <button
-                      className="text-btn"
-                      onClick={showDemo}
-                      disabled={busy || !storageReady}
-                    >
-                      Explore fictional example data
-                      <ArrowRight size={15} />
-                    </button>
-                  </div>
-                )}
+                {!data.accounts.length &&
+                  !data.monthlyExpenses.length &&
+                  !data.payments.length && (
+                    <div className="demo-invite">
+                      <span>Want to look around first?</span>
+                      <button
+                        className="text-btn"
+                        onClick={showDemo}
+                        disabled={busy || !storageReady}
+                      >
+                        Explore fictional example data
+                        <ArrowRight size={15} />
+                      </button>
+                    </div>
+                  )}
               </>
             )}
             {page === "Expenses" && (
@@ -993,8 +1026,8 @@ export default function App() {
                   <div>
                     <h2>Monthly category totals</h2>
                     <p className="muted small">
-                      One total per category, per month. No need to enter every
-                      purchase.
+                      Manual totals or outgoing payment sums, one per category.
+                      Manual totals take priority.
                     </p>
                   </div>
                   <input
@@ -1057,43 +1090,57 @@ export default function App() {
                                     }
                                   </span>
                                 </td>
-                                <td className="muted">{e.note || "—"}</td>
+                                <td className="muted">
+                                  {e.note || "—"}
+                                  {e.manual && e.paymentCount > 0 && (
+                                    <small className="source-note">
+                                      {e.paymentCount} payment(s) excluded from
+                                      this total
+                                    </small>
+                                  )}
+                                </td>
                                 <td className="right">
                                   <Money value={e.amount} />
                                 </td>
                                 <td className="row-actions">
-                                  <button
-                                    className="icon-btn"
-                                    onClick={() => openExpense(e.id)}
-                                    aria-label={`Edit ${data.categories.find((c) => c.id === e.categoryId)?.name} cost`}
-                                  >
-                                    <Pencil size={16} />
-                                  </button>
-                                  <button
-                                    className="icon-btn"
-                                    onClick={() =>
-                                      remove(
-                                        "Delete monthly cost?",
-                                        "This removes this category total for the selected month.",
-                                        async () => {
-                                          await write(
-                                            {
-                                              ...data,
-                                              monthlyExpenses:
-                                                data.monthlyExpenses.filter(
-                                                  (x) => x.id !== e.id,
-                                                ),
+                                  {e.manual ? (
+                                    <>
+                                      <button
+                                        className="icon-btn"
+                                        onClick={() => openExpense(e.id)}
+                                        aria-label={`Edit ${data.categories.find((c) => c.id === e.categoryId)?.name} cost`}
+                                      >
+                                        <Pencil size={16} />
+                                      </button>
+                                      <button
+                                        className="icon-btn"
+                                        onClick={() =>
+                                          remove(
+                                            "Delete monthly cost?",
+                                            "This removes the manual total. Any outgoing payments recorded for this category and month will then determine its total.",
+                                            async () => {
+                                              await write(
+                                                {
+                                                  ...data,
+                                                  monthlyExpenses:
+                                                    data.monthlyExpenses.filter(
+                                                      (x) => x.id !== e.id,
+                                                    ),
+                                                },
+                                                "Monthly cost deleted.",
+                                              );
+                                              setConfirm(null);
                                             },
-                                            "Monthly cost deleted.",
-                                          );
-                                          setConfirm(null);
-                                        },
-                                      )
-                                    }
-                                    aria-label="Delete monthly cost"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
+                                          )
+                                        }
+                                        aria-label="Delete monthly cost"
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <span className="caption">Payment sum</span>
+                                  )}
                                 </td>
                               </tr>
                             ))}
@@ -1113,6 +1160,31 @@ export default function App() {
                     />
                   )}
                 </section>
+                <PaymentsPanel
+                  data={data}
+                  month={month}
+                  busy={busy}
+                  onImport={() => setImportOpen(true)}
+                  onEdit={(id) => setModal({ kind: "payment", id })}
+                  onDelete={(payment) =>
+                    remove(
+                      "Delete this payment?",
+                      "Payment-based category totals update automatically. Manual totals are unchanged.",
+                      async () => {
+                        await write(
+                          {
+                            ...data,
+                            payments: data.payments.filter(
+                              (p) => p.id !== payment.id,
+                            ),
+                          },
+                          "Payment deleted.",
+                        );
+                        setConfirm(null);
+                      },
+                    )
+                  }
+                />
               </>
             )}
             {page === "Assets" && (
@@ -1725,8 +1797,8 @@ export default function App() {
                     </span>
                     <h2>Export a backup</h2>
                     <p>
-                      Download all expenses, accounts, snapshots, cash flows,
-                      and scenarios in one JSON file.
+                      Download all expenses, payments, accounts, snapshots, cash
+                      flows, and scenarios in one JSON file.
                     </p>
                     <div className="backup-status">
                       <span className="label">Last export initiated</span>
@@ -1806,6 +1878,7 @@ export default function App() {
                       ["Accounts", data.accounts.length],
                       ["Categories", data.categories.length],
                       ["Monthly costs", data.monthlyExpenses.length],
+                      ["Payments", data.payments.length],
                       ["Snapshots", data.assetSnapshots.length],
                       ["Cash flows", data.cashFlows.length],
                       ["Scenarios", data.scenarios.length],
@@ -1891,6 +1964,21 @@ export default function App() {
           <span>Independent project. Not affiliated with Trade Republic.</span>
         </footer>
       </main>
+      {importOpen && (
+        <PaymentImport
+          data={data}
+          busy={busy}
+          onClose={() => setImportOpen(false)}
+          onSave={async (next) => {
+            await write(next, "Selected payments imported.");
+            const oldIds = new Set(data.payments.map((p) => p.id));
+            const last = next.payments
+              .filter((p) => !oldIds.has(p.id))
+              .sort((a, b) => b.date.localeCompare(a.date))[0];
+            if (last) setMonth(last.date.slice(0, 7));
+          }}
+        />
+      )}
       {modal && (
         <ModalFrame
           title={
@@ -1906,7 +1994,9 @@ export default function App() {
                   ? modal.id
                     ? "Edit snapshot"
                     : "Update balance"
-                  : "Record a cash flow"
+                  : modal.kind === "payment"
+                    ? "Edit payment"
+                    : "Record a cash flow"
           }
           onClose={() => {
             if (!busy) setModal(null);
@@ -1917,7 +2007,8 @@ export default function App() {
               <>
                 <p className="modal-copy">
                   Enter the total for one category. Editing this entry replaces
-                  its previous amount.
+                  its previous amount. A manual total overrides any recorded
+                  payments in that category and month.
                 </p>
                 <Field label="Month">
                   <input
@@ -1971,6 +2062,61 @@ export default function App() {
                     defaultValue={editingExpense?.note ?? ""}
                     placeholder="Anything worth remembering"
                   />
+                </Field>
+              </>
+            )}
+            {modal.kind === "payment" && editingPayment && (
+              <>
+                <p className="modal-copy">
+                  Outgoing payments count toward category totals only when no
+                  manual total exists for that category and month.
+                </p>
+                <Field label="Payment date">
+                  <input
+                    name="date"
+                    type="date"
+                    defaultValue={editingPayment.date}
+                    min="1900-01-01"
+                    max={today()}
+                    required
+                  />
+                </Field>
+                <Field label="Description">
+                  <input
+                    name="description"
+                    defaultValue={editingPayment.description}
+                    maxLength={250}
+                    required
+                  />
+                </Field>
+                <Field label="Amount (€)" hint="German format: 1.250,50">
+                  <input
+                    name="amount"
+                    inputMode="decimal"
+                    defaultValue={moneyText(editingPayment.amount)}
+                    required
+                  />
+                </Field>
+                <Field label="Direction">
+                  <select
+                    name="direction"
+                    defaultValue={editingPayment.direction}
+                  >
+                    <option value="debit">Outgoing</option>
+                    <option value="credit">Incoming</option>
+                  </select>
+                </Field>
+                <Field label="Payment category">
+                  <select
+                    name="category"
+                    defaultValue={editingPayment.categoryId}
+                  >
+                    {data.categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
               </>
             )}
@@ -2198,6 +2344,7 @@ export default function App() {
               ["Accounts", backup.data.accounts.length],
               ["Categories", backup.data.categories.length],
               ["Monthly costs", backup.data.monthlyExpenses.length],
+              ["Payments", backup.data.payments.length],
               ["Snapshots", backup.data.assetSnapshots.length],
               ["Cash flows", backup.data.cashFlows.length],
               ["Scenarios", backup.data.scenarios.length],

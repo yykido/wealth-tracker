@@ -13,3 +13,4 @@ backups/
 wealth-tracker-backup-*.json
 test-results/
 playwright-report/
+public/ocr/

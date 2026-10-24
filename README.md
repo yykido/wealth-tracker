@@ -25,10 +25,12 @@ For browser tests on Linux, install the test browser with `npx playwright instal
 ## Features
 
 - Add, edit, and delete monthly expense totals by category.
+- Bulk-import payments from a screenshot/photo using on-device OCR, or paste a payment list. Edit dates, descriptions, amounts, directions, and category suggestions before confirming.
+- Flag possible duplicates and explicitly resolve conflicts with existing manual category totals. Incoming payments are stored separately and excluded from spending.
 - Create bank, savings, and brokerage accounts; record cash and investments separately in dated snapshots.
 - Keep contributions, withdrawals, and paired internal transfers separate from balance history.
 - Save constant-rate projection scenarios with monthly contributions and inflation adjustments. These are hypothetical, before taxes and costs.
-- Export all records as a versioned JSON backup, preview and validate restores, and replace data transactionally after confirmation.
+- Export all records, including individual payments, as a versioned JSON backup, preview and validate restores, and replace data transactionally after confirmation.
 - Load explicitly labeled fictional examples or start empty. Loading examples replaces existing records only after confirmation.
 
 ## Where your data lives
@@ -57,8 +59,20 @@ Sites hosts the static `dist/` build using `.openai/hosting.json`. GitHub and Si
 - [Architecture](docs/architecture.md)
 - [Decisions](docs/decisions.md)
 
-CSV imports, shared family synchronization, live brokerage data, and a backend are outside the first version. Use GitHub Issues to track future work.
+## Screenshot import
+
+Open **Expenses → Import screenshot**. Choose a PNG, JPEG, or WebP image (up to 10 MB), set English/German recognition and the year for dates that omit it, then scan. Review and correct each row before importing selected payments. You can also paste or correct the recognized text.
+
+Start with a clear list containing dates, merchants, and signed euro amounts. Arbitrary bank layouts and blurry photos may need corrections. Incoming, unsigned, transfer-like, and ambiguous rows are not selected automatically. Duplicate warnings can be overridden only when you confirm a genuinely separate payment.
+
+A manual category/month total overrides payment sums. When a screenshot overlaps one, explicitly keep the manual total or replace it with all recorded outgoing payments for that category/month. Replacing a full monthly total with a partial screenshot can understate spending; the review shows the new amount.
+
+Images and raw extracted text are transient and never saved in backups or uploaded. OCR worker, WASM, and English/German models are copied from npm dependencies to ignored `public/ocr/` assets before development and builds, and served from the same origin. The first scan downloads recognition assets to the browser. No paid API or backend is used.
+
+Backups now use version 2 and include payments; version 1 backups remain readable and migrate with an empty payment collection. Older app versions cannot restore version 2 exports.
+
+CSV imports, shared family synchronization, live brokerage data, and a backend remain outside scope. Use GitHub Issues to track future work.
 
 ## Verification
 
-The first release passed 13 domain/database checks and two end-to-end Chrome workflows, including editing, reload persistence, export/restore, invalid backup rejection, projections, and mobile layout. Desktop and mobile screenshots were visually reviewed using fictional records. GitHub Actions runs the domain/database checks and production build.
+The current release passed 25 domain/database checks and five end-to-end Chrome workflows, including real English/German screenshot OCR, bulk review, duplicate handling, manual-total conflicts, scan cancellation, schema migration, editing, reload persistence, export/restore, projections, and mobile layout. Desktop and mobile screenshots were visually reviewed using fictional records. GitHub Actions runs the domain/database checks and production build.

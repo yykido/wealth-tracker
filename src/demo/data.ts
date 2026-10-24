@@ -57,6 +57,7 @@ export function demoData(): Data {
         note: "",
       })),
     ),
+    payments: [],
     assetSnapshots: months.flatMap((month, i) => [
       {
         id: `snap-b-${i}`,

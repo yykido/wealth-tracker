@@ -5,6 +5,7 @@ export class TrackerDB extends Dexie {
   accounts!: Table<Data["accounts"][number]>;
   categories!: Table<Data["categories"][number]>;
   monthlyExpenses!: Table<Data["monthlyExpenses"][number]>;
+  payments!: Table<Data["payments"][number]>;
   assetSnapshots!: Table<Data["assetSnapshots"][number]>;
   cashFlows!: Table<Data["cashFlows"][number]>;
   scenarios!: Table<Data["scenarios"][number]>;
@@ -20,12 +21,14 @@ export class TrackerDB extends Dexie {
       scenarios: "id",
       settings: "id",
     });
+    this.version(2).stores({ payments: "id, date, categoryId, importBatchId" });
   }
   async read(): Promise<Data> {
     return this.transaction("r", this.tables, async () => ({
       accounts: await this.accounts.toArray(),
       categories: await this.categories.toArray(),
       monthlyExpenses: await this.monthlyExpenses.toArray(),
+      payments: await this.payments.toArray(),
       assetSnapshots: await this.assetSnapshots.toArray(),
       cashFlows: await this.cashFlows.toArray(),
       scenarios: await this.scenarios.toArray(),
@@ -46,6 +49,7 @@ export class TrackerDB extends Dexie {
       await this.accounts.bulkPut(data.accounts);
       await this.categories.bulkPut(data.categories);
       await this.monthlyExpenses.bulkPut(data.monthlyExpenses);
+      await this.payments.bulkPut(data.payments);
       await this.assetSnapshots.bulkPut(data.assetSnapshots);
       await this.cashFlows.bulkPut(data.cashFlows);
       await this.scenarios.bulkPut(data.scenarios);

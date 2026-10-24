@@ -30,7 +30,7 @@ Status: accepted; narrowed to manual entry for the first version.
 
 Start with monthly expense totals per category and dated account snapshots. Preserve previous snapshot dates, and edit rather than duplicate a total for the same month/category or account/date. Track cash flows separately when available.
 
-CSV imports, transaction-level expenses, and brokerage integrations are later enhancements. This keeps the initial tracker small and avoids import-format complexity.
+Transaction-level screenshot import is now accepted under D012. CSV imports and brokerage integrations remain later enhancements. This keeps the initial tracker small and avoids import-format complexity.
 
 ## D005: GitHub contains code, not personal data
 
@@ -94,3 +94,13 @@ Consequence: invalid or failed restores preserve existing records. Merge is outs
 Status: accepted.
 
 The user requested a visual style similar to Trade Republic. Use clean white surfaces, bold black typography, restrained green accents, and minimal charts. Keep independent Wealth Tracker branding and an explicit non-affiliation statement.
+
+## D012: Bulk screenshot import with local OCR and explicit review
+
+Status: accepted.
+
+The user requested importing multiple payments from one screenshot. Add Tesseract.js OCR with English/German models served from the same website, plus a paste/correct-text option. Keep images and OCR text transient. Persist individual reviewed payments, proposed categories, and import batch IDs only after confirmation.
+
+Reason: reduce manual entry without uploading financial screenshots or requiring a backend.
+
+Consequence: advance IndexedDB and backup schemas to version 2 while preserving legacy records and restoring version 1 backups. Explicitly distinguish incoming/outgoing payments. Warn about duplicates and require a decision for overlapping manual totals. A manual total takes priority; it is never added on top of payment sums. Category suggestions and OCR output remain user-reviewable rather than authoritative.
