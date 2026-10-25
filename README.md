@@ -25,7 +25,7 @@ For browser tests on Linux, install the test browser with `npx playwright instal
 ## Features
 
 - Add, edit, and delete monthly expense totals by category.
-- Bulk-import payments from a screenshot/photo using on-device OCR, or paste a payment list. Edit dates, descriptions, amounts, directions, and category suggestions before confirming.
+- Bulk-import payments from a screenshot/photo using on-device OCR, or paste a payment list. Edit dates, optional descriptions, amounts, directions, and category suggestions before confirming.
 - Flag possible duplicates and explicitly resolve conflicts with existing manual category totals. Incoming payments are stored separately and excluded from spending.
 - Create bank, savings, and brokerage accounts; record cash and investments separately in dated snapshots.
 - Keep contributions, withdrawals, and paired internal transfers separate from balance history.

@@ -215,13 +215,11 @@ test("a canceled scan can be retried without saving any payments", async ({
     await route.continue().catch(() => {});
   });
   const dialog = await openImport(page);
-  await dialog
-    .getByLabel("Payment screenshot")
-    .setInputFiles({
-      name: "cancel-fixture.png",
-      mimeType: "image/png",
-      buffer: Buffer.from(png, "base64"),
-    });
+  await dialog.getByLabel("Payment screenshot").setInputFiles({
+    name: "cancel-fixture.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(png, "base64"),
+  });
   await dialog
     .getByRole("button", { name: "Scan payment list", exact: true })
     .click();
@@ -246,4 +244,61 @@ test("a canceled scan can be retried without saving any payments", async ({
   await expect(page.locator("#recorded-payments")).toContainText(
     "0 records this month",
   );
+});
+
+test("description can stay blank through bulk import, editing, and backup recovery", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(
+    page.getByRole("button", { name: "Update balances" }),
+  ).toBeEnabled();
+  await nav(page, "Expenses").click();
+  let dialog = await paste(page, "20.10.2026 REWE -42,80 EUR");
+  await dialog.getByLabel("Description 1", { exact: true }).fill("");
+  await expect(
+    dialog.getByRole("button", {
+      name: "Import 1 selected payment",
+      exact: true,
+    }),
+  ).toBeEnabled();
+  await dialog
+    .getByRole("button", { name: "Import 1 selected payment", exact: true })
+    .click();
+  await expect(page.locator("#recorded-payments")).toContainText(
+    "No description",
+  );
+  await page
+    .locator("#recorded-payments")
+    .getByRole("button", { name: /Edit payment/ })
+    .click();
+  dialog = page.getByRole("dialog", { name: "Edit payment" });
+  await expect(
+    dialog.getByLabel("Description (optional)", { exact: true }),
+  ).toHaveValue("");
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog).not.toBeVisible();
+  await nav(page, "Data & backup").click();
+  const downloaded = page.waitForEvent("download");
+  await page
+    .getByRole("button", { name: "Export backup", exact: true })
+    .click();
+  const file = await (await downloaded).path();
+  await page.getByRole("button", { name: "Clear all records" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Erase all records" })
+    .click();
+  await page.getByLabel("Select JSON backup").setInputFiles(file);
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Replace & restore" })
+    .click();
+  await nav(page, "Expenses").click();
+  await expect(page.locator("#recorded-payments")).toContainText(
+    "No description",
+  );
+  await expect(
+    page.locator(".summary-band .metric-number").first(),
+  ).toContainText("42,80");
 });

@@ -2081,12 +2081,12 @@ export default function App() {
                     required
                   />
                 </Field>
-                <Field label="Description">
+                <Field label="Description (optional)">
                   <input
                     name="description"
                     defaultValue={editingPayment.description}
                     maxLength={250}
-                    required
+                    placeholder="Optional"
                   />
                 </Field>
                 <Field label="Amount (€)" hint="German format: 1.250,50">

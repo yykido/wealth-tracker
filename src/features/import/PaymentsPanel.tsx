@@ -56,7 +56,11 @@ export default function PaymentsPanel({
                 return (
                   <tr key={p.id}>
                     <td>{p.date}</td>
-                    <td>{p.description}</td>
+                    <td>
+                      {p.description || (
+                        <span className="muted">No description</span>
+                      )}
+                    </td>
                     <td>
                       {data.categories.find((c) => c.id === p.categoryId)?.name}
                     </td>
@@ -74,14 +78,14 @@ export default function PaymentsPanel({
                     <td className="row-actions">
                       <button
                         className="icon-btn"
-                        aria-label={`Edit payment ${p.description}`}
+                        aria-label={`Edit payment ${p.description || `${p.date} ${euro(p.amount, 2)}`}`}
                         onClick={() => onEdit(p.id)}
                       >
                         <Pencil size={16} />
                       </button>
                       <button
                         className="icon-btn"
-                        aria-label={`Delete payment ${p.description}`}
+                        aria-label={`Delete payment ${p.description || `${p.date} ${euro(p.amount, 2)}`}`}
                         onClick={() => onDelete(p)}
                       >
                         <Trash2 size={16} />

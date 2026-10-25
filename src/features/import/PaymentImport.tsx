@@ -477,7 +477,7 @@ export default function PaymentImport({ data, busy, onClose, onSave }: Props) {
                   <tr>
                     <th>Select</th>
                     <th>Date</th>
-                    <th>Description</th>
+                    <th>Description (optional)</th>
                     <th>Amount (€)</th>
                     <th>Direction</th>
                     <th>Category</th>
@@ -515,9 +515,10 @@ export default function PaymentImport({ data, busy, onClose, onSave }: Props) {
                             }
                           />
                         </td>
-                        <td data-label="Description">
+                        <td data-label="Description (optional)">
                           <input
                             aria-label={`Description ${index + 1}`}
+                            placeholder="Optional"
                             value={row.description}
                             maxLength={250}
                             onChange={(e) =>

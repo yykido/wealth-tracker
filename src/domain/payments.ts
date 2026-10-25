@@ -76,8 +76,8 @@ export function rowProblems(row: ReviewRow): string[] {
   const issues: string[] = [];
   if (!validDate(row.date) || row.date > today())
     issues.push("Set a valid payment date (not in the future).");
-  if (!row.description.trim() || row.description.length > 250)
-    issues.push("Description is required (up to 250 characters).");
+  if (row.description.length > 250)
+    issues.push("Description must be no more than 250 characters.");
   try {
     if (moneyInput(row.amount) <= 0)
       issues.push("Amount must be greater than zero.");

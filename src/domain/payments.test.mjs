@@ -151,3 +151,23 @@ describe("payment backup compatibility", () => {
     assert.throws(() => parseBackup(JSON.stringify(broken)), /payment/);
   });
 });
+
+describe("optional payment descriptions", () => {
+  it("imports blank descriptions, trims whitespace, and round-trips them through backups", () => {
+    const selection = rows();
+    selection[0].description = "";
+    selection[1].description = "   ";
+    const next = applyPaymentImport(emptyData(), selection, {});
+    assert.equal(next.payments[0].description, "");
+    assert.equal(next.payments[1].description, "");
+    assert.deepEqual(parseBackup(JSON.stringify(makeBackup(next))).data, next);
+  });
+  it("still flags possible duplicates with no description and enforces the length limit", () => {
+    const selection = [{ ...rows()[0], description: "" }];
+    const next = applyPaymentImport(emptyData(), selection, {});
+    assert.ok(duplicateIds(selection, next).has(selection[0].id));
+    assert.throws(() => applyPaymentImport(next, selection, {}), /duplicate/);
+    selection[0].description = "x".repeat(251);
+    assert.throws(() => applyPaymentImport(emptyData(), selection, {}), /250/);
+  });
+});

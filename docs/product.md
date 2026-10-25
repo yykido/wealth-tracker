@@ -33,7 +33,7 @@ Categories are user-defined. Support euro amounts and German decimal formatting.
 - Select a PNG, JPEG, or WebP screenshot/photo of a payment list (up to 10 MB and 24 megapixels), or paste a payment list as text.
 - Run OCR locally using English and/or German models served with the app; do not send the image or extracted text to external services.
 - Support dated payment rows and date headings with signed euro amounts. Expose a year setting for dates without a year. Other layouts may require manual correction.
-- Review an editable table of dates, descriptions, positive amounts, outgoing/incoming direction, and suggested categories. Allow deselecting entries and adding missed rows.
+- Review an editable table of dates, optional descriptions, positive amounts, outgoing/incoming direction, and suggested categories. Blank descriptions are accepted when importing, editing, and restoring backups. Allow deselecting entries and adding missed rows.
 - Do not automatically select incoming, unsigned, ambiguous multi-amount, or transfer-like entries. Do not include incoming payments in spending totals.
 - Flag matching date/description/amount/direction combinations in existing records or the selected batch. Duplicates require an explicit exception or deselection.
 - Require a choice for existing manual totals: keep the total and exclude payments from its calculation, or remove the total and use all recorded outgoing payments for the group. Show that partial imports may understate a full month.

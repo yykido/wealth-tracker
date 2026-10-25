@@ -80,7 +80,8 @@ export function validateData(value: unknown): Data {
   for (const p of data.payments) {
     assert(
       validDate(p.date) &&
-        text(p.description, 250) &&
+        typeof p.description === "string" &&
+        p.description.length <= 250 &&
         money(p.amount) &&
         p.amount > 0 &&
         ["debit", "credit"].includes(p.direction) &&
