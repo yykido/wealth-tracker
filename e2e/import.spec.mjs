@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures.mjs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 const nav = (page, name) =>

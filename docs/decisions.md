@@ -1,6 +1,6 @@
 # Decisions
 
-Last updated: 2026-10-24
+Last updated: 2026-10-25
 
 Accepted decisions describe the current design; the README records implementation and verification status. This log records the current direction and meaningful superseded choices rather than the full conversation.
 
@@ -104,3 +104,11 @@ The user requested importing multiple payments from one screenshot. Add Tesserac
 Reason: reduce manual entry without uploading financial screenshots or requiring a backend.
 
 Consequence: advance IndexedDB and backup schemas to version 2 while preserving legacy records and restoring version 1 backups. Explicitly distinguish incoming/outgoing payments. Warn about duplicates and require a decision for overlapping manual totals. A manual total takes priority; it is never added on top of payment sums. Category suggestions and OCR output remain user-reviewable rather than authoritative.
+
+## D013: Private shared household for allowlisted ChatGPT accounts
+
+Status: accepted; supersedes the browser-only persistence and sharing limitations in D003, D006, and D009.
+
+The user wants consistent data across devices and invited accounts. Every invited account may edit, but only the owner is admitted initially; additional accounts will be added later. Keep the private Sites audience and add a server-side runtime email allowlist. Authenticate and authorize every API read/write. Store one shared household in Sites-managed D1 with transactional revision checks, preserving the existing data format and interface.
+
+Do not upload browser records automatically. Offer a reviewed migration or JSON restore, with explicit warnings that replacement and deletion affect all members. Original screenshots and raw OCR text remain device-local. Adding a member later requires both Sites visitor access and an update to the server-only allowlist; Sites source editing access is separate.

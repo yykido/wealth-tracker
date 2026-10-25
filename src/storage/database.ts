@@ -57,4 +57,4 @@ export class TrackerDB extends Dexie {
     });
   }
 }
-export const db = new TrackerDB();
+export const legacyDb = new TrackerDB();

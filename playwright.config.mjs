@@ -3,7 +3,7 @@ export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
   workers: 1,
-  timeout: 30000,
+  timeout: 60000,
   use: {
     baseURL: "http://127.0.0.1:5173",
     channel: process.platform === "darwin" ? "chrome" : undefined,
@@ -13,8 +13,8 @@ export default defineConfig({
   },
   webServer: {
     command: "npm run dev",
-    url: "http://127.0.0.1:5173",
+    url: "http://127.0.0.1:5173/favicon.svg",
     reuseExistingServer: !process.env.CI,
-    timeout: 30000,
+    timeout: 120000,
   },
 });

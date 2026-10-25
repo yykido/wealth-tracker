@@ -14,3 +14,9 @@ wealth-tracker-backup-*.json
 test-results/
 playwright-report/
 public/ocr/
+
+.wrangler/
+.vinext/
+.next/
+.dev.vars*
+!.dev.vars.example

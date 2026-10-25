@@ -2029,3 +2029,58 @@ dialog::backdrop {
     font-size: 11px;
   }
 }
+.shared-status {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  color: #74766c;
+  margin: -10px 0 25px;
+}
+.shared-status > span {
+  flex: 1;
+}
+.shared-status .text-btn,
+.shared-status > a {
+  font-size: 10px;
+  white-space: nowrap;
+}
+.shared-status > a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.migration-banner {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  background: #f6f1df;
+  border: 1px solid #e9dfbd;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 25px;
+}
+.migration-banner > div {
+  flex: 1;
+  min-width: 240px;
+}
+.migration-banner strong {
+  font-size: 13px;
+}
+.migration-banner p {
+  font-size: 11px;
+  color: #7d7459;
+  margin-top: 6px;
+}
+.access-page {
+  max-width: 650px;
+  padding: 100px 30px;
+}
+.access-page p {
+  margin: 25px 0;
+  color: #777;
+}
+.access-page h1 {
+  font-size: 32px;
+}

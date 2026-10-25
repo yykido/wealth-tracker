@@ -1,57 +1,74 @@
 # Wealth Tracker
 
-A browser-only personal finance dashboard for monthly expenses, dated asset balances, and hypothetical investment projections. Its restrained black-and-white interface takes visual inspiration from Trade Republic; this is an independent project with no brokerage affiliation.
+A private, shared household finance tracker for invited ChatGPT accounts. Track monthly expenses, dated asset balances, bulk screenshot payments, and hypothetical investment projections.
+
+[Open the private tracker](https://wealth-tracker-yykido.beigehake2.chatgpt.site)
+
+## Shared data and access
+
+Invited accounts see and edit the same centrally stored household. Only the owner is enabled initially. Sites enforces its private access policy, and the application separately checks a server-only email allowlist on every read and write. Missing identity or configuration fails closed. Financial records are never committed to GitHub or included in the frontend bundle.
+
+Records are stored in a Sites-managed Cloudflare D1 database. They survive browser clearing and can be accessed from another device after sign-in. The app checks for updates every 15 seconds while not editing; Refresh records loads changes immediately. Concurrent stale writes return a conflict instead of overwriting another member's changes.
+
+Restore, deletion, and loading examples change the shared household for everyone. Review confirmations and export a backup before destructive changes.
+
+## Existing browser-only records
+
+On the same browser and Site origin, the app detects the earlier IndexedDB records after authorized sign-in. It does not upload or remove them automatically. Use **Export browser-only backup** to preserve a copy, or **Review browser migration** to inspect and explicitly confirm replacing the shared household.
+
+You can also restore an existing JSON backup through **Data & backup**. Versions 1 and 2 remain supported. Restore replaces shared records rather than merging them, and affects all members. Plain JSON backups are readable and unencrypted; keep them private, outside this repository.
 
 ## Run locally
 
-Use Node.js 20 or newer (Node 22 recommended).
+Requires Node.js **22.13 or newer** (Node 22 LTS recommended).
 
 ```bash
 npm ci
+cp .dev.vars.example .dev.vars
+npm run build
+```
+
+Apply each pending local schema migration once:
+
+```bash
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_jittery_the_professor.sql
 npm run dev
 ```
 
-Open the local URL printed by Vite (normally `http://127.0.0.1:5173`).
+Open the printed loopback URL. The Sites starter simulates sign-in locally as `seedy@sites.test`; the example development allowlist admits only that fictional identity. This mock is not included in production builds. Local and hosted databases are separate. Keep real credentials and data out of local test fixtures.
 
 ```bash
-npm test          # Domain, backup validation, and database recovery checks
-npm run test:browser # End-to-end checks (Chrome on macOS; Chromium elsewhere)
-npm run build    # TypeScript checks and production build into dist/
-npm run preview  # Serve the production build locally
+npm test             # Domain, legacy recovery, authorization, SQLite concurrency
+npm run typecheck
+npm run test:browser # Chrome on macOS; install Chromium elsewhere
+npm run build
+npm start            # Preview the built Worker locally
 ```
 
-For browser tests on Linux, install the test browser with `npx playwright install --with-deps chromium`. Browser tests use fictional data in a fresh profile; screenshot artifacts go to the temporary directory.
+Browser tests reset the loopback preview household with fictional data before each case. Do not run them against a local database containing records you want to keep; export a backup first. They refuse to reset anything other than the fictional loopback identity. On Linux, install Chromium with `npx playwright install --with-deps chromium`.
 
-## Features
+## Inviting an editor later
 
-- Add, edit, and delete monthly expense totals by category.
-- Bulk-import payments from a screenshot/photo using on-device OCR, or paste a payment list. Edit dates, optional descriptions, amounts, directions, and category suggestions before confirming.
-- Flag possible duplicates and explicitly resolve conflicts with existing manual category totals. Incoming payments are stored separately and excluded from spending.
-- Create bank, savings, and brokerage accounts; record cash and investments separately in dated snapshots.
-- Keep contributions, withdrawals, and paired internal transfers separate from balance history.
-- Save constant-rate projection scenarios with monthly contributions and inflation adjustments. These are hypothetical, before taxes and costs.
-- Export all records, including individual payments, as a versioned JSON backup, preview and validate restores, and replace data transactionally after confirmation.
-- Load explicitly labeled fictional examples or start empty. Loading examples replaces existing records only after confirmation.
+The owner must do both:
 
-## Where your data lives
+1. Add the person's ChatGPT account email through Sites sharing, preserving the custom/private audience.
+2. Add the same email to the comma-separated **server secret** `WEALTH_ALLOWED_EMAILS` in Sites runtime settings and deploy to apply it.
 
-IndexedDB in the current browser stores financial records. The app does not upload them to Sites, GitHub, or a backend. Updating records does not require a commit or redeployment, and the deployed app does not depend on the developer's Mac being awake.
+All app-allowlisted members have household edit access. Sites project editing privileges are separate and are not required to edit financial records. Removing the email from either access layer denies further service access. Do not expose the server allowlist or real email addresses in client code, hosting manifests, migrations, or GitHub.
 
-Data is specific to the browser profile and website origin. Local development, a Sites URL, and a different browser have separate databases. Clearing website data, deleting a profile, or private browsing can remove records. Export backups after monthly updates. To move records, export from the old browser and restore in the new one.
+## Screenshot import
 
-JSON backups are readable text, not encrypted. Keep real imports and backups outside this repository. Use fictional data in examples, screenshots, and test fixtures. Never enter brokerage login details or account numbers.
+Open **Expenses → Import screenshot**. Choose a PNG, JPEG, or WebP image up to 10 MB, set English/German recognition and the year for dates without one, and scan. Review dates, amounts, optional descriptions, direction, and suggested categories before importing selected payments. Pasted payment lists are also supported.
 
-## Recovery
+Original images and raw OCR text remain on the device. OCR assets are served from the same Site; only confirmed structured payment records are saved to shared storage. Incoming, unsigned, ambiguous, and transfer-like rows are not selected automatically. Possible duplicates require review. Clear screenshots work best; arbitrary layouts and blurry photos may need corrections.
 
-Open **Data & backup → Choose backup file**, select a Wealth Tracker JSON backup, review its date and record counts, and confirm **Replace & restore**. You can export current records before replacing them. Invalid or failed restores preserve existing records; successful restores replace rather than merge them.
+Manual category/month totals override payment sums. Overlapping imports require a choice to keep a manual total or replace it with all recorded outgoing payments for that group. A partial screenshot can understate a full month's costs when replacing a manual total.
 
-If the hosted Site is unavailable, run the application locally or redeploy its code, then import the backup. Recovery includes only the state recorded when the backup was exported.
+## Development and deployment
 
-## Deployment and version control
+The React interface runs on the Sites Vinext starter with a server API and D1. Keep the supplied Sites integration, .openai/hosting.json, and immutable Drizzle migrations. Generate new schema migrations with `npm run db:generate`; do not edit previously applied migrations. Sites applies hosted schema changes during deployment. The source repository and GitHub are separate destinations; publish the same reviewed revision.
 
-GitHub tracks source, documentation, the dependency lockfile, and fictional test data. GitHub Actions runs tests and production builds for pushes and pull requests. Local IDE files, build output, dependencies, private-data folders, and named backup exports are ignored.
-
-Sites hosts the static `dist/` build using `.openai/hosting.json`. GitHub and Sites have separate source remotes; publish the same reviewed source revision to both. Keep personal data out of build inputs and deployment archives. The configured Site address is [Wealth Tracker](https://wealth-tracker-yykido.beigehake2.chatgpt.site); it becomes available after a successful private deployment.
+Shared requests and datasets are bounded to 10 MB. Data is split into bounded database chunks, and revision updates and chunk writes occur in one transaction. Invalid input, stale edits, and failed transactions preserve the previous records.
 
 ## Documentation
 
@@ -59,20 +76,4 @@ Sites hosts the static `dist/` build using `.openai/hosting.json`. GitHub and Si
 - [Architecture](docs/architecture.md)
 - [Decisions](docs/decisions.md)
 
-## Screenshot import
-
-Open **Expenses → Import screenshot**. Choose a PNG, JPEG, or WebP image (up to 10 MB), set English/German recognition and the year for dates that omit it, then scan. Review and correct each row before importing selected payments. You can also paste or correct the recognized text.
-
-Start with a clear list containing dates, merchants, and signed euro amounts. Arbitrary bank layouts and blurry photos may need corrections. Incoming, unsigned, transfer-like, and ambiguous rows are not selected automatically. Duplicate warnings can be overridden only when you confirm a genuinely separate payment.
-
-A manual category/month total overrides payment sums. When a screenshot overlaps one, explicitly keep the manual total or replace it with all recorded outgoing payments for that category/month. Replacing a full monthly total with a partial screenshot can understate spending; the review shows the new amount.
-
-Images and raw extracted text are transient and never saved in backups or uploaded. OCR worker, WASM, and English/German models are copied from npm dependencies to ignored `public/ocr/` assets before development and builds, and served from the same origin. The first scan downloads recognition assets to the browser. No paid API or backend is used.
-
-Backups now use version 2 and include payments; version 1 backups remain readable and migrate with an empty payment collection. Older app versions cannot restore version 2 exports.
-
-CSV imports, shared family synchronization, live brokerage data, and a backend remain outside scope. Use GitHub Issues to track future work.
-
-## Verification
-
-The current release passed 25 domain/database checks and five end-to-end Chrome workflows, including real English/German screenshot OCR, bulk review, duplicate handling, manual-total conflicts, scan cancellation, schema migration, editing, reload persistence, export/restore, projections, and mobile layout. Desktop and mobile screenshots were visually reviewed using fictional records. GitHub Actions runs the domain/database checks and production build.
+Independent project; not affiliated with Trade Republic. No trades are executed. Projections use editable assumptions and exclude taxes and costs.

@@ -1,6 +1,6 @@
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures.mjs";
 const nav = (page, name) =>
   page
     .getByRole("navigation", { name: "Main navigation", exact: true })

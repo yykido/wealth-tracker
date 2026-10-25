@@ -1,0 +1,2 @@
+# Local development only. Hosted values are configured in Sites secrets.
+WEALTH_ALLOWED_EMAILS="seedy@sites.test"

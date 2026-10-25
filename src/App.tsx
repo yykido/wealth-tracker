@@ -1,3 +1,5 @@
+"use client";
+
 import {
   useEffect,
   useRef,
@@ -57,7 +59,8 @@ import {
   type Scenario,
 } from "./domain/model";
 import { makeBackup, parseBackup, type Backup } from "./domain/backup";
-import { db } from "./storage/database";
+import { db, SharedDataError } from "./storage/shared";
+import { legacyDb } from "./storage/database";
 import { demoData } from "./demo/data";
 import PaymentImport from "./features/import/PaymentImport";
 import PaymentsPanel from "./features/import/PaymentsPanel";
@@ -285,6 +288,8 @@ export default function App() {
     [confirm, setConfirm] = useState<Confirmation>(null),
     [backup, setBackup] = useState<Backup | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [legacyData, setLegacyData] = useState<Data | null>(null);
+  const [syncedAt, setSyncedAt] = useState<string | null>(null);
   const [month, setMonth] = useState(today().slice(0, 7));
   const [range, setRange] = useState<"6M" | "1Y" | "ALL">("ALL");
   const [expenseCategory, setExpenseCategory] = useState("new");
@@ -305,10 +310,26 @@ export default function App() {
       .then((d) => {
         setData(d);
         setStorageReady(true);
+        setSyncedAt(db.metadata?.updatedAt ?? null);
+        legacyDb
+          .read()
+          .then((local) => {
+            if (
+              local.accounts.length ||
+              local.categories.length ||
+              local.monthlyExpenses.length ||
+              local.payments.length ||
+              local.scenarios.length
+            )
+              setLegacyData(local);
+          })
+          .catch(() => {});
       })
-      .catch(() =>
+      .catch((error) =>
         setError(
-          "Browser storage is unavailable. Enable website storage and reload. Your existing records have not been changed.",
+          error instanceof Error
+            ? error.message
+            : "Shared records are unavailable. Please reload.",
         ),
       )
       .finally(() => setLoading(false));
@@ -321,7 +342,7 @@ export default function App() {
   const write = async (next: Data, message: string) => {
     if (!storageReady)
       throw new Error(
-        "Browser storage is unavailable. Please reload after enabling website storage.",
+        "Shared records are unavailable. Please reload before saving.",
       );
     if (saving.current)
       throw new Error("A save is already in progress. Please wait.");
@@ -331,12 +352,59 @@ export default function App() {
     try {
       await db.replace(next, data);
       setData(await db.read());
+      setSyncedAt(db.metadata?.updatedAt ?? null);
       setNotice(message);
     } finally {
       saving.current = false;
       setBusy(false);
     }
   };
+  useEffect(() => {
+    let disposed = false,
+      inFlight = false;
+    const refresh = async () => {
+      if (
+        inFlight ||
+        saving.current ||
+        modal ||
+        importOpen ||
+        confirm ||
+        backup ||
+        page === "Projections" ||
+        !storageReady
+      )
+        return;
+      inFlight = true;
+      try {
+        const fresh = await db.read();
+        if (!disposed) {
+          setData(fresh);
+          setSyncedAt(db.metadata?.updatedAt ?? null);
+        }
+      } catch (error) {
+        if (
+          !disposed &&
+          error instanceof SharedDataError &&
+          (error.status === 401 || error.status === 403)
+        ) {
+          setData(emptyData());
+          setStorageReady(false);
+          setError(error.message);
+        }
+      } finally {
+        inFlight = false;
+      }
+    };
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") void refresh();
+    }, 15000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      disposed = true;
+      clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [modal, importOpen, confirm, backup, page, storageReady]);
   const attempt = async (action: () => Promise<void>) => {
     try {
       await action();
@@ -436,7 +504,7 @@ export default function App() {
     setConfirm({
       title: "Explore with example data?",
       description:
-        "This replaces this browser’s current records with fictional examples. Export a backup first if you have records to keep.",
+        "This replaces the shared household records for every invited member with fictional examples. Export a backup first if you have records to keep.",
       label: "Load example data",
       action: async () => {
         await write(demoData(), "Fictional example data loaded.");
@@ -580,7 +648,7 @@ export default function App() {
             kind: kind as "contribution" | "withdrawal",
           });
       }
-      await write(next, "Changes saved in this browser.");
+      await write(next, "Changes saved to the shared household.");
       setModal(null);
     });
   };
@@ -664,6 +732,7 @@ export default function App() {
               className={page === p ? "active" : ""}
               onClick={() => go(p)}
               aria-current={page === p ? "page" : undefined}
+              disabled={loading}
             >
               {p}
             </button>
@@ -671,7 +740,7 @@ export default function App() {
         </nav>
         <div className="local-badge">
           <span />
-          Local & private
+          Shared & private
         </div>
       </header>
       <nav className="mobile-nav" aria-label="Mobile navigation">
@@ -762,6 +831,68 @@ export default function App() {
             </button>
           </div>
         )}
+        <div className="shared-status">
+          <span>
+            {syncedAt
+              ? `Shared records updated ${new Date(syncedAt).toLocaleString("en-GB")}`
+              : "Shared household · invited accounts only"}{" "}
+            · checks for updates every 15 seconds when not editing
+          </span>
+          <button
+            className="text-btn"
+            disabled={busy || !!modal || importOpen || !!backup || !!confirm}
+            onClick={() =>
+              attempt(async () => {
+                setData(await db.read());
+                setStorageReady(true);
+                setSyncedAt(db.metadata?.updatedAt ?? null);
+                setNotice("Shared records refreshed.");
+              })
+            }
+          >
+            Refresh records
+          </button>
+          <a href="/signout-with-chatgpt?return_to=%2F" target="_top">
+            Sign out
+          </a>
+        </div>
+        {legacyData && storageReady && (
+          <div className="migration-banner">
+            <div>
+              <strong>Browser-only records found on this device</strong>
+              <p>
+                They have not been uploaded or removed. Review them before
+                replacing shared records, or save a separate browser-only
+                backup.
+              </p>
+            </div>
+            <button
+              className="btn secondary"
+              disabled={busy}
+              onClick={() => {
+                const blob = new Blob(
+                  [JSON.stringify(makeBackup(legacyData), null, 2)],
+                  { type: "application/json" },
+                );
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `wealth-tracker-browser-backup-${today()}.json`;
+                link.click();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+              }}
+            >
+              Export browser-only backup
+            </button>
+            <button
+              className="btn"
+              disabled={busy}
+              onClick={() => setBackup(makeBackup(legacyData))}
+            >
+              Review browser migration
+            </button>
+          </div>
+        )}
         {notice && (
           <div className="toast" role="status">
             <Check size={17} />
@@ -769,7 +900,7 @@ export default function App() {
           </div>
         )}
         {loading ? (
-          <div className="loading">Opening your local workspace…</div>
+          <div className="loading">Opening your shared household…</div>
         ) : (
           <>
             {page === "Overview" && (
@@ -992,8 +1123,8 @@ export default function App() {
                 <div className="privacy-strip">
                   <ShieldCheck size={18} />
                   <span>
-                    Personal by design. Your financial records stay in this
-                    browser.
+                    Private by invitation. Every invited member sees the same
+                    shared records.
                   </span>
                   <button
                     className="text-btn"
@@ -1778,16 +1909,16 @@ export default function App() {
                     <HardDrive size={30} />
                   </div>
                   <div>
-                    <h2>Stored here. Controlled by you.</h2>
+                    <h2>One household. Shared securely.</h2>
                     <p>
-                      Your records live in this browser’s database, not on
-                      GitHub or Sites. No account login or brokerage connection
-                      is needed.
+                      Your invited ChatGPT accounts share one private database.
+                      Changes are saved securely on Sites and are available
+                      across devices.
                     </p>
                   </div>
                   <span className="local-badge">
                     <span />
-                    Browser storage
+                    Shared storage
                   </span>
                 </section>
                 <div className="backup-grid">
@@ -1829,8 +1960,8 @@ export default function App() {
                     </span>
                     <h2>Restore your records</h2>
                     <p>
-                      Recover after data loss or move to a new browser. Select a
-                      Wealth Tracker JSON backup to review it first.
+                      Recover shared records or migrate a browser-only export.
+                      Select a Wealth Tracker JSON backup to review it first.
                     </p>
                     <div className="restore-steps">
                       <span>
@@ -1852,8 +1983,8 @@ export default function App() {
                       Choose backup file
                     </button>
                     <small>
-                      Nothing changes until you confirm. Restore replaces
-                      existing records; it does not merge them.
+                      Nothing changes until you confirm. Restore replaces the
+                      shared records for everyone; it does not merge them.
                     </small>
                   </section>
                 </div>
@@ -1870,7 +2001,7 @@ export default function App() {
                 />
                 <section className="panel spaced">
                   <div className="section-top">
-                    <h2>What’s in this browser</h2>
+                    <h2>Shared household records</h2>
                     <Database size={19} />
                   </div>
                   <div className="record-counts">
@@ -1895,12 +2026,13 @@ export default function App() {
                   <div>
                     <strong>A little backup habit goes a long way.</strong>
                     <p>
-                      Export after each monthly update. Clearing website data or
-                      deleting a browser profile can erase records. Another
-                      browser or device has its own database. Private browsing
-                      is unsuitable for keeping records. A backup recovers only
-                      the state at export, not later edits. If the Site is
-                      unavailable, run or redeploy the app and restore there.
+                      Export after monthly updates and before restoring or
+                      deleting records. Clearing your browser does not erase
+                      shared records. Every invited member can edit; restore and
+                      delete actions affect everyone. A backup recovers only the
+                      state at export, not later changes. Original screenshots
+                      stay on your device; confirmed payment records are saved
+                      to the shared household.
                     </p>
                   </div>
                 </div>
@@ -1908,8 +2040,8 @@ export default function App() {
                   <div>
                     <h3>Explore fictional data</h3>
                     <p className="small muted">
-                      Try a filled dashboard. This replaces current records
-                      after confirmation.
+                      Try a filled dashboard. This replaces EVERY member’s
+                      shared records after confirmation.
                     </p>
                   </div>
                   <button
@@ -1923,7 +2055,7 @@ export default function App() {
                 </section>
                 <section className="panel spaced utilities">
                   <div>
-                    <h3>Clear this browser’s records</h3>
+                    <h3>Clear shared household records</h3>
                     <p className="small muted">
                       Export a backup first. Deletion cannot be undone without a
                       backup.
@@ -1934,13 +2066,16 @@ export default function App() {
                     disabled={busy || !storageReady}
                     onClick={() =>
                       setConfirm({
-                        title: "Erase all local records?",
+                        title: "Erase the shared household records?",
                         description:
-                          "All records in this browser will be deleted. Export a backup before continuing if you want to recover them.",
+                          "This deletes the shared records for EVERY invited member. Export a backup before continuing if you want to recover them.",
                         label: "Erase all records",
                         danger: true,
                         action: async () => {
-                          await write(emptyData(), "All local records erased.");
+                          await write(
+                            emptyData(),
+                            "Shared household records erased.",
+                          );
                           setConfirm(null);
                           setScenario({ ...scenario, id: "" });
                           setSelectedScenario("");
@@ -2358,8 +2493,9 @@ export default function App() {
           <div className="alert warning">
             <AlertTriangle size={20} />
             <span>
-              Restore replaces all current records in this browser. It does not
-              merge them. Changes after this export will not be recovered.
+              Restore replaces the shared records for EVERY invited member. It
+              does not merge them. Changes after this export will not be
+              recovered.
             </span>
           </div>
           <button
